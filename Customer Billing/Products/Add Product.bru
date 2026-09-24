@@ -1,0 +1,23 @@
+meta {
+  name: Add Product
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/products
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "productName": "Masala Dose",
+    "productCode": "2",
+    "category": "Dairy",
+    "purchasePrice": 45,
+    "sellingPrice": 50,
+    "gst": 5,
+    "stock": 100
+  }
+}
