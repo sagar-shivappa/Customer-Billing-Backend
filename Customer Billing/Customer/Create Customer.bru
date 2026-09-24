@@ -1,0 +1,22 @@
+meta {
+  name: Create Customer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Ramesh Kumar",
+    "phone": "9876543210",
+    "email": "ramesh@example.com",
+    "address": "Bangalore",
+    "pincode": "560001",
+    "gstin": "29ABCDE1234F1Z5"
+  }
+}

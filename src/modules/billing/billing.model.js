@@ -41,7 +41,7 @@ const billingSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    clientId: {
+    customerCode: {
       type: String,
     },
 

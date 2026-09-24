@@ -1,0 +1,15 @@
+meta {
+  name: Lookup by phone
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/customers/lookup?phone=6360959764
+  body: none
+  auth: none
+}
+
+query {
+  phone: 6360959764
+}
