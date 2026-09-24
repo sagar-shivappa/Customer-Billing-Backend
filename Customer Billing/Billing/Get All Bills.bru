@@ -1,0 +1,15 @@
+meta {
+  name: Get All Bills
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/billing?date=2026-09-24
+  body: none
+  auth: none
+}
+
+query {
+  date: 2026-09-24
+}

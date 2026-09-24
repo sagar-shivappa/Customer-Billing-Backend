@@ -25,7 +25,6 @@ const createBill = async (billData) => {
   const billItems = [];
 
   let grandTotal = 0;
-  let ItemsQuantity = 0;
 
   /*
        Loop through received products
@@ -56,7 +55,6 @@ const createBill = async (billData) => {
     });
 
     grandTotal += totalPrice;
-    ItemsQuantity += quantity;
   }
 
   const billNumber = await generateBillNumber();
@@ -64,7 +62,6 @@ const createBill = async (billData) => {
   const bill = await Billing.create({
     billNumber,
     items: billItems,
-    ItemsQuantity,
     grandTotal,
     paymentType,
     customerCode,
@@ -87,42 +84,99 @@ const getBillById = async (id) => {
 };
 
 /**
- * Get Bills With Date Range
+ * Get Bills With Filters
+ *
+ * Supported filters:
+ * ?date=2026-09-24
+ * ?from=2026-09-01&to=2026-09-24
+ * ?month=2026-09
+ * ?customerCode=6360959764
+ *
+ * Filters can also be combined.
  */
 const getBills = async (filters) => {
-  const { from, to, page = 1, limit = 20 } = filters;
+  const { date, from, to, month, customerCode, page = 1, limit = 20 } = filters;
 
   const query = {};
 
-  if (from && to) {
-    query.saleDate = {
-      $gte: new Date(`${from}T00:00:00.000Z`),
+  /**
+   * Customer Code Filter
+   */
+  if (customerCode) {
+    query.customerCode = customerCode.trim();
+  }
 
-      $lte: new Date(`${to}T23:59:59.999Z`),
+  /**
+   * Date Filter
+   */
+  if (date) {
+    query.saleDate = {
+      $gte: new Date(`${date}T00:00:00.000Z`),
+      $lte: new Date(`${date}T23:59:59.999Z`),
     };
   }
 
-  const skip = (page - 1) * limit;
+  /**
+   * Date Range Filter
+   */
+  else if (from || to) {
+    query.saleDate = {};
 
+    if (from) {
+      query.saleDate.$gte = new Date(`${from}T00:00:00.000Z`);
+    }
+
+    if (to) {
+      query.saleDate.$lte = new Date(`${to}T23:59:59.999Z`);
+    }
+  }
+
+  /**
+   * Month Filter
+   * Example: month=2026-09
+   */
+  else if (month) {
+    const [year, monthNumber] = month.split("-");
+
+    const startDate = new Date(
+      Date.UTC(Number(year), Number(monthNumber) - 1, 1),
+    );
+
+    const endDate = new Date(Date.UTC(Number(year), Number(monthNumber), 1));
+
+    query.saleDate = {
+      $gte: startDate,
+      $lt: endDate,
+    };
+  }
+
+  /**
+   * Pagination
+   */
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+
+  const skip = (pageNumber - 1) * limitNumber;
+
+  /**
+   * Fetch Bills
+   */
   const bills = await Billing.find(query)
-
     .sort({
       saleDate: -1,
     })
-
     .skip(skip)
+    .limit(limitNumber);
 
-    .limit(Number(limit));
-
+  /**
+   * Total Bills
+   */
   const total = await Billing.countDocuments(query);
 
   return {
     total,
-
-    page: Number(page),
-
-    limit: Number(limit),
-
+    page: pageNumber,
+    limit: limitNumber,
     data: bills,
   };
 };
