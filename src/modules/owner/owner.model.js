@@ -23,7 +23,11 @@ const ownerSchema = new mongoose.Schema({
 
   gstin: {
     type: String,
-    required: true,
+  },
+
+  productCategories: {
+    type: [String],
+    default: [],
   },
 });
 

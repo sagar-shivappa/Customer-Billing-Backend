@@ -4,7 +4,7 @@ meta {
   seq: 3
 }
 
-post {
+put {
   url: {{baseUrl}}/api/owner
   body: json
   auth: none
@@ -12,9 +12,12 @@ post {
 
 body:json {
   {
-    "shopName": "5454",
+    "shopName": "Sagar",
     "address": "21212",
     "gstin": "21212",
-    "pinCode": "21212"
+    "pinCode": "21212",
+    "productCategories": [
+      "Tiffin"
+    ]
   }
 }
