@@ -16,7 +16,7 @@ const generateBillNumber = async () => {
  * Create Bill
  */
 const createBill = async (billData) => {
-  const { items, paymentType, customerCode } = billData;
+  const { items, paymentType, customerId } = billData;
 
   if (!items || items.length === 0) {
     throw new Error("Bill should contain at least one product.");
@@ -64,7 +64,7 @@ const createBill = async (billData) => {
     items: billItems,
     grandTotal,
     paymentType,
-    customerCode,
+    customerId,
   });
 
   return bill;
@@ -90,20 +90,20 @@ const getBillById = async (id) => {
  * ?date=2026-09-24
  * ?from=2026-09-01&to=2026-09-24
  * ?month=2026-09
- * ?customerCode=6360959764
+ * ?customerId=6360959764
  *
  * Filters can also be combined.
  */
 const getBills = async (filters) => {
-  const { date, from, to, month, customerCode, page = 1, limit = 20 } = filters;
+  const { date, from, to, month, customerId, page = 1, limit = 20 } = filters;
 
   const query = {};
 
   /**
    * Customer Code Filter
    */
-  if (customerCode) {
-    query.customerCode = customerCode.trim();
+  if (customerId) {
+    query.customerId = customerId.trim();
   }
 
   /**

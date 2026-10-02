@@ -3,23 +3,23 @@ const Customer = require("./customer.model");
 /**
  * Generate Customer Code
  */
-const generateCustomerCode = async () => {
+const generatecustomerId = async () => {
   const count = await Customer.countDocuments();
 
-  const customerCode = `CUS${String(count + 1).padStart(6, "0")}`;
+  const customerId = `CUS${String(count + 1).padStart(6, "0")}`;
 
-  return customerCode;
+  return customerId;
 };
 
 /**
  * Create Customer
  */
 const createCustomer = async (customerData) => {
-  const customerCode = await generateCustomerCode();
+  const customerId = await generatecustomerId();
 
   const customer = await Customer.create({
     ...customerData,
-    customerCode,
+    customerId,
   });
 
   return customer;
@@ -37,13 +37,13 @@ const getCustomers = async () => {
 /**
  * Get Customer By Phone Number or Customer Code
  */
-const getCustomerByPhoneOrCode = async ({ phone, customerCode }) => {
+const getCustomerByPhoneOrCode = async ({ phone, customerId }) => {
   const query = {};
 
   if (phone) {
     query.phone = phone.trim();
-  } else if (customerCode) {
-    query.customerCode = customerCode.trim().toUpperCase();
+  } else if (customerId) {
+    query.customerId = customerId.trim().toUpperCase();
   } else {
     throw new Error("Phone number or customer code is required.");
   }
