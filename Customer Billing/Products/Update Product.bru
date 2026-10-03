@@ -1,0 +1,23 @@
+meta {
+  name: Update Product
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/products/6abf64e19feced972a6adb8a
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "productName": "Chiroti Dose",
+    "productCode": "2",
+    "category": "Dairy",
+    "purchasePrice": 45,
+    "sellingPrice": 50,
+    "gst": 5,
+    "stock": 100
+  }
+}

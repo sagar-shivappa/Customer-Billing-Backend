@@ -8,4 +8,6 @@ router.use("/owner", require("../modules/owner/owner.routes"));
 
 router.use("/customers", require("../modules/customers/customer.routes"));
 
+router.use("/reports", require("../modules/reports/reports.routes"));
+
 module.exports = router;
