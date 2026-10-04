@@ -1,0 +1,17 @@
+meta {
+  name: Payment Filter
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/reports/transactions?from=2026-10-01&to=2026-10-04&paymentType=UPI
+  body: none
+  auth: none
+}
+
+query {
+  from: 2026-10-01
+  to: 2026-10-04
+  paymentType: UPI
+}

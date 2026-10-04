@@ -1,0 +1,15 @@
+meta {
+  name: Today's Transaction
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/reports/transactions?date=2026-10-04
+  body: none
+  auth: none
+}
+
+query {
+  date: 2026-10-04
+}

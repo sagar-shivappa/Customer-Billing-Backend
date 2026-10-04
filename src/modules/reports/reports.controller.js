@@ -1,19 +1,42 @@
 const reportsService = require("./reports.service");
 
-const getOverviewSummary = async (req, res) => {
+/**
+ * GET /api/reports/overview
+ */
+const getOverview = async (req, res) => {
   try {
-    const summary = await reportsService.getOverviewSummary(req.query);
+    const result = await reportsService.getOverviewSummary(req.query);
 
-    res.json(summary);
+    res.status(200).json(result);
   } catch (error) {
-    console.error("Failed to get overview summary:", error);
+    console.error("Error fetching overview:", error);
 
     res.status(500).json({
-      message: "Failed to get overview summary",
+      message: "Failed to fetch overview",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * GET /api/reports/transactions
+ */
+const getTransactions = async (req, res) => {
+  try {
+    const result = await reportsService.getTransactions(req.query);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch transactions",
+      error: error.message,
     });
   }
 };
 
 module.exports = {
-  getOverviewSummary,
+  getOverview,
+  getTransactions,
 };

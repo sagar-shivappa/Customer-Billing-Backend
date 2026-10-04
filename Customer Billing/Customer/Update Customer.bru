@@ -1,0 +1,26 @@
+meta {
+  name: Update Customer
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/customers/6ac234462453ab385c32f5da
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Sagar Shivappa",
+    "phone": "6360959764",
+    "email": "",
+    "address": "",
+    "pincode": "",
+    "gstin": ""
+  }
+}
