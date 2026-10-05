@@ -29,51 +29,119 @@ const createBill = async (billData) => {
   }
 
   const billItems = [];
-
   let grandTotal = 0;
 
-  /*
-       Loop through received products
-    */
-  for (const item of items) {
-    const product = await Product.findOne({
-      productCode: item.productCode,
-    });
+  /**
+   * Keep track of stock that has been reduced.
+   *
+   * This allows us to restore stock if something fails
+   * after some products have already been updated.
+   */
+  const stockUpdates = [];
 
-    if (!product) {
-      throw new Error(`Product not found: ${item.productCode}`);
+  try {
+    /**
+     * Loop through received products
+     */
+    for (const item of items) {
+      const quantity = Number(item.quantity);
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error("Quantity must be greater than zero.");
+      }
+
+      /**
+       * Atomically reduce stock.
+       *
+       * stock: { $gte: quantity }
+       * ensures stock can never become negative.
+       */
+      const product = await Product.findOneAndUpdate(
+        {
+          productCode: item.productCode,
+          stock: { $gte: quantity },
+        },
+        {
+          $inc: {
+            stock: -quantity,
+          },
+        },
+        {
+          new: true,
+        },
+      );
+
+      /**
+       * Product doesn't exist OR insufficient stock
+       */
+      if (!product) {
+        const existingProduct = await Product.findOne({
+          productCode: item.productCode,
+        });
+
+        if (!existingProduct) {
+          throw new Error(`Product not found: ${item.productCode}`);
+        }
+
+        throw new Error(
+          `Insufficient stock for ${existingProduct.productName}. Available: ${existingProduct.stock}, requested: ${quantity}`,
+        );
+      }
+
+      /**
+       * Remember this stock update so we can restore it
+       * if bill creation fails later.
+       */
+      stockUpdates.push({
+        productId: product._id,
+        quantity,
+      });
+
+      const totalPrice = product.sellingPrice * quantity;
+
+      billItems.push({
+        productCode: product.productCode,
+        productName: product.productName,
+        quantity,
+        unitPrice: product.sellingPrice,
+        totalPrice,
+      });
+
+      grandTotal += totalPrice;
     }
 
-    const quantity = item.quantity;
+    /**
+     * Generate bill number
+     */
+    const billNumber = generateBillNumber();
 
-    if (quantity <= 0) {
-      throw new Error("Quantity must be greater than zero.");
-    }
-
-    const totalPrice = product.sellingPrice * quantity;
-
-    billItems.push({
-      productCode: product.productCode,
-      productName: product.productName,
-      quantity,
-      unitPrice: product.sellingPrice,
-      totalPrice,
+    /**
+     * Create bill
+     */
+    const bill = await Billing.create({
+      billNumber,
+      items: billItems,
+      grandTotal,
+      paymentType,
+      customerId,
     });
 
-    grandTotal += totalPrice;
+    return bill;
+  } catch (error) {
+    /**
+     * If anything failed after stock was reduced,
+     * restore the stock.
+     */
+    for (const update of stockUpdates) {
+      await Product.findByIdAndUpdate(update.productId, {
+        $inc: {
+          stock: update.quantity,
+        },
+      });
+    }
+
+    throw error;
   }
-
-  const billNumber = await generateBillNumber();
-
-  const bill = await Billing.create({
-    billNumber,
-    items: billItems,
-    grandTotal,
-    paymentType,
-    customerId,
-  });
-
-  return bill;
 };
 
 /**
@@ -106,7 +174,7 @@ const getBills = async (filters) => {
   const query = {};
 
   /**
-   * Customer Code Filter
+   * Customer ID Filter
    */
   if (customerId) {
     query.customerId = customerId.trim();
@@ -189,8 +257,6 @@ const getBills = async (filters) => {
 
 module.exports = {
   createBill,
-
   getBillById,
-
   getBills,
 };
