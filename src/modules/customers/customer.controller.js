@@ -13,10 +13,7 @@ const createCustomer = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
@@ -33,10 +30,7 @@ const getCustomers = async (req, res) => {
       data: customers,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
@@ -53,10 +47,7 @@ const getCustomerByPhoneOrCode = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
@@ -73,10 +64,7 @@ const getCustomerById = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
@@ -96,10 +84,7 @@ const updateCustomer = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
@@ -116,10 +101,7 @@ const deactivateCustomer = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 
