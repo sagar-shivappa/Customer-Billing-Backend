@@ -29,6 +29,10 @@ const ownerSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  stockManagement: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 module.exports = mongoose.model("Owner", ownerSchema);

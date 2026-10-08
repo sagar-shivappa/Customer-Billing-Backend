@@ -1,5 +1,6 @@
 const Billing = require("./billing.model");
 const Product = require("../products/product.model");
+const Owner = require("../owner/owner.model");
 
 /**
  * Generate Bill Number
@@ -28,6 +29,19 @@ const createBill = async (billData) => {
     throw new Error("Bill should contain at least one product.");
   }
 
+  /**
+   * Get shop configuration
+   */
+  const owner = await Owner.findOne({
+    profileKey: "OWNER",
+  }).select("stockManagement");
+
+  if (!owner) {
+    throw new Error("Owner profile not found.");
+  }
+
+  const stockManagement = owner.stockManagement;
+
   const billItems = [];
   let grandTotal = 0;
 
@@ -50,52 +64,67 @@ const createBill = async (billData) => {
         throw new Error("Quantity must be greater than zero.");
       }
 
+      let product;
+
       /**
-       * Atomically reduce stock.
+       * Stock Management ENABLED
        *
-       * stock: { $gte: quantity }
-       * ensures stock can never become negative.
+       * Check available stock and reduce it atomically.
        */
-      const product = await Product.findOneAndUpdate(
-        {
-          productCode: item.productCode,
-          stock: { $gte: quantity },
-        },
-        {
-          $inc: {
-            stock: -quantity,
+      if (stockManagement) {
+        product = await Product.findOneAndUpdate(
+          {
+            productCode: item.productCode,
+            stock: { $gte: quantity },
           },
-        },
-        {
-          new: true,
-        },
-      );
+          {
+            $inc: {
+              stock: -quantity,
+            },
+          },
+          {
+            new: true,
+          },
+        );
 
-      /**
-       * Product doesn't exist OR insufficient stock
-       */
-      if (!product) {
-        const existingProduct = await Product.findOne({
-          productCode: item.productCode,
-        });
+        if (!product) {
+          const existingProduct = await Product.findOne({
+            productCode: item.productCode,
+          });
 
-        if (!existingProduct) {
-          throw new Error(`Product not found: ${item.productCode}`);
+          if (!existingProduct) {
+            throw new Error(`Product not found: ${item.productCode}`);
+          }
+
+          throw new Error(
+            `Insufficient stock for ${existingProduct.productName}. Available: ${existingProduct.stock}, requested: ${quantity}`,
+          );
         }
 
-        throw new Error(
-          `Insufficient stock for ${existingProduct.productName}. Available: ${existingProduct.stock}, requested: ${quantity}`,
-        );
+        /**
+         * Remember stock update for rollback
+         */
+        stockUpdates.push({
+          productId: product._id,
+          quantity,
+        });
       }
 
       /**
-       * Remember this stock update so we can restore it
-       * if bill creation fails later.
+       * Stock Management DISABLED
+       *
+       * Just find the product.
+       * Stock is not checked or modified.
        */
-      stockUpdates.push({
-        productId: product._id,
-        quantity,
-      });
+      else {
+        product = await Product.findOne({
+          productCode: item.productCode,
+        });
+
+        if (!product) {
+          throw new Error(`Product not found: ${item.productCode}`);
+        }
+      }
 
       const totalPrice = product.sellingPrice * quantity;
 

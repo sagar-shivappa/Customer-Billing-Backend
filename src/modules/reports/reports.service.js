@@ -54,6 +54,13 @@ const buildDateQuery = ({ date, from, to, month }) => {
 
 /**
  * Get Overview Summary
+ *
+ * Returns:
+ * - totalSales
+ * - transactionCount
+ * - customerCount
+ * - averageBill
+ * - salesTrend
  */
 const getOverviewSummary = async (filters) => {
   const query = buildDateQuery(filters);
@@ -64,74 +71,164 @@ const getOverviewSummary = async (filters) => {
     },
 
     {
-      $group: {
-        _id: null,
+      $facet: {
+        // -----------------------------------------
+        // Summary
+        // -----------------------------------------
 
-        totalSales: {
-          $sum: "$grandTotal",
-        },
+        summary: [
+          {
+            $group: {
+              _id: null,
 
-        transactionCount: {
-          $sum: 1,
-        },
+              totalSales: {
+                $sum: "$grandTotal",
+              },
 
-        customerIds: {
-          $addToSet: "$customerId",
-        },
-      },
-    },
+              transactionCount: {
+                $sum: 1,
+              },
 
-    {
-      $project: {
-        _id: 0,
+              customerIds: {
+                $addToSet: "$customerId",
+              },
+            },
+          },
 
-        totalSales: 1,
+          {
+            $project: {
+              _id: 0,
 
-        transactionCount: 1,
+              totalSales: 1,
 
-        customerCount: {
-          $size: {
-            $filter: {
-              input: "$customerIds",
-              as: "customer",
+              transactionCount: 1,
 
-              cond: {
-                $and: [
-                  {
-                    $ne: ["$$customer", null],
+              customerCount: {
+                $size: {
+                  $filter: {
+                    input: "$customerIds",
+
+                    as: "customer",
+
+                    cond: {
+                      $and: [
+                        {
+                          $ne: ["$$customer", null],
+                        },
+
+                        {
+                          $ne: ["$$customer", ""],
+                        },
+                      ],
+                    },
                   },
+                },
+              },
+
+              averageBill: {
+                $cond: [
                   {
-                    $ne: ["$$customer", ""],
+                    $eq: ["$transactionCount", 0],
+                  },
+
+                  0,
+
+                  {
+                    $divide: ["$totalSales", "$transactionCount"],
                   },
                 ],
               },
             },
           },
-        },
+        ],
 
-        averageBill: {
-          $cond: [
-            {
-              $eq: ["$transactionCount", 0],
+        // -----------------------------------------
+        // Sales Trend
+        //
+        // Groups sales by day
+        // -----------------------------------------
+
+        salesTrend: [
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: "$saleDate",
+                  timezone: "Asia/Kolkata",
+                },
+              },
+
+              sales: {
+                $sum: "$grandTotal",
+              },
             },
-            0,
-            {
-              $divide: ["$totalSales", "$transactionCount"],
+          },
+
+          {
+            $project: {
+              _id: 0,
+
+              date: "$_id",
+
+              sales: 1,
             },
-          ],
-        },
+          },
+
+          {
+            $sort: {
+              date: 1,
+            },
+          },
+        ],
+
+        paymentBreakdown: [
+          {
+            $group: {
+              _id: "$paymentType",
+              amount: {
+                $sum: "$grandTotal",
+              },
+              transactionCount: {
+                $sum: 1,
+              },
+            },
+          },
+
+          {
+            $project: {
+              _id: 0,
+              paymentType: "$_id",
+              amount: 1,
+              transactionCount: 1,
+            },
+          },
+
+          {
+            $sort: {
+              amount: -1,
+            },
+          },
+        ],
       },
     },
   ]);
 
-  return (
-    result[0] || {
-      totalSales: 0,
-      transactionCount: 0,
-      averageBill: 0,
-      customerCount: 0,
-    }
-  );
+  const data = result[0];
+
+  const summary = data.summary[0] || {
+    totalSales: 0,
+    transactionCount: 0,
+    customerCount: 0,
+    averageBill: 0,
+  };
+
+  return {
+    ...summary,
+
+    salesTrend: data.salesTrend || [],
+    paymentBreakdown: data.paymentBreakdown || [],
+  };
 };
 
 /**

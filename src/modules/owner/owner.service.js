@@ -29,7 +29,7 @@ const updateOwner = async (profileData) => {
 };
 
 /**
- * Get Bill By Id
+ * Get Owner Profile
  */
 const getOwner = async () => {
   const owner = await Owner.findOne({
