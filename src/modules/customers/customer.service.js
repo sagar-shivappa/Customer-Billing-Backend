@@ -51,7 +51,9 @@ const getCustomerByPhoneOrCode = async ({ phone, customerId }) => {
   const customer = await Customer.findOne(query);
 
   if (!customer) {
-    throw new Error("Customer not found.");
+    const error = new Error("Customer not found.");
+    error.statusCode = 404;
+    throw error;
   }
 
   return customer;

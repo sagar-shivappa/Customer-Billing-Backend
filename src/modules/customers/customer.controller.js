@@ -37,7 +37,7 @@ const getCustomers = async (req, res) => {
 /**
  * Get Customer By Phone Number or Customer Code
  */
-const getCustomerByPhoneOrCode = async (req, res) => {
+const getCustomerByPhoneOrCode = async (req, res, next) => {
   try {
     const customer = await customerService.getCustomerByPhoneOrCode(req.query);
 
