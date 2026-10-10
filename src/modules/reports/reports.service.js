@@ -1,4 +1,230 @@
 const Billing = require("../billing/billing.model");
+const Product = require("../products/product.model");
+
+// Escape special characters in user-provided search text.
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const parseDate = (value, endOfDay = false) => {
+  if (!value) return null;
+
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid date: ${value}`);
+  }
+
+  // Ensure YYYY-MM-DD values are real calendar dates.
+  if (dateOnly && date.toISOString().slice(0, 10) !== value) {
+    throw new Error(`Invalid date: ${value}`);
+  }
+
+  if (dateOnly && endOfDay) {
+    date.setUTCHours(23, 59, 59, 999);
+  }
+
+  return date;
+};
+
+const getProductsReport = async (filters = {}) => {
+  const {
+    from,
+    to,
+    category,
+    search,
+    sortBy = "revenue",
+    sortOrder = "desc",
+  } = filters;
+
+  const startDate = parseDate(from);
+  const endDate = parseDate(to, true);
+
+  if (startDate && endDate && startDate > endDate) {
+    throw new Error("'from' date cannot be after 'to' date.");
+  }
+
+  const allowedSortFields = {
+    revenue: "totalRevenue",
+    quantitySold: "totalQuantitySold",
+    stock: "stock",
+    estimatedProfit: "estimatedProfit",
+    productName: "productName",
+  };
+
+  if (!allowedSortFields[sortBy]) {
+    throw new Error("Invalid sortBy value.");
+  }
+
+  const direction = sortOrder.toLowerCase();
+
+  if (!["asc", "desc"].includes(direction)) {
+    throw new Error("sortOrder must be 'asc' or 'desc'.");
+  }
+
+  const productMatch = {};
+
+  if (category) {
+    productMatch.category = category;
+  }
+
+  if (search?.trim()) {
+    const searchRegex = new RegExp(escapeRegex(search.trim()), "i");
+
+    productMatch.$or = [
+      { productName: searchRegex },
+      { productCode: searchRegex },
+    ];
+  }
+
+  // Only sales metrics are date-filtered.
+  // Every matching product remains in the report,
+  // including products without sales in this period.
+  const salesDateMatch = {};
+
+  if (startDate || endDate) {
+    salesDateMatch.saleDate = {};
+
+    if (startDate) {
+      salesDateMatch.saleDate.$gte = startDate;
+    }
+
+    if (endDate) {
+      salesDateMatch.saleDate.$lte = endDate;
+    }
+  }
+
+  const salesPipeline = [
+    ...(Object.keys(salesDateMatch).length ? [{ $match: salesDateMatch }] : []),
+
+    { $unwind: "$items" },
+
+    {
+      $match: {
+        $expr: {
+          $eq: ["$items.productCode", "$$productCode"],
+        },
+      },
+    },
+
+    {
+      $group: {
+        _id: null,
+        totalQuantitySold: {
+          $sum: "$items.quantity",
+        },
+        totalRevenue: {
+          $sum: "$items.totalPrice",
+        },
+      },
+    },
+  ];
+
+  const products = await Product.aggregate([
+    { $match: productMatch },
+
+    {
+      $lookup: {
+        from: Billing.collection.name,
+        let: { productCode: "$productCode" },
+        pipeline: salesPipeline,
+        as: "sales",
+      },
+    },
+
+    {
+      $addFields: {
+        totalQuantitySold: {
+          $ifNull: [{ $arrayElemAt: ["$sales.totalQuantitySold", 0] }, 0],
+        },
+        totalRevenue: {
+          $ifNull: [{ $arrayElemAt: ["$sales.totalRevenue", 0] }, 0],
+        },
+      },
+    },
+
+    {
+      $addFields: {
+        estimatedProfit: {
+          $subtract: [
+            "$totalRevenue",
+            {
+              $multiply: ["$purchasePrice", "$totalQuantitySold"],
+            },
+          ],
+        },
+
+        stockStatus: {
+          $switch: {
+            branches: [
+              {
+                case: { $lte: ["$stock", 0] },
+                then: "Out of stock",
+              },
+              {
+                case: { $lte: ["$stock", 10] },
+                then: "Low stock",
+              },
+            ],
+            default: "In stock",
+          },
+        },
+      },
+    },
+
+    {
+      $sort: {
+        [allowedSortFields[sortBy]]: direction === "asc" ? 1 : -1,
+        _id: 1,
+      },
+    },
+
+    {
+      $project: {
+        _id: 1,
+        productName: 1,
+        productCode: 1,
+        category: 1,
+        purchasePrice: 1,
+        sellingPrice: 1,
+        stock: 1,
+        isActive: 1,
+        totalQuantitySold: 1,
+        totalRevenue: 1,
+        estimatedProfit: 1,
+        stockStatus: 1,
+      },
+    },
+  ]);
+
+  const summary = products.reduce(
+    (result, product) => {
+      result.productCount++;
+      result.totalQuantitySold += product.totalQuantitySold;
+      result.totalRevenue += product.totalRevenue;
+      result.estimatedProfit += product.estimatedProfit;
+
+      if (product.stockStatus === "Low stock") {
+        result.lowStockCount++;
+      }
+
+      if (product.stockStatus === "Out of stock") {
+        result.outOfStockCount++;
+      }
+
+      return result;
+    },
+    {
+      productCount: 0,
+      totalQuantitySold: 0,
+      totalRevenue: 0,
+      estimatedProfit: 0,
+      lowStockCount: 0,
+      outOfStockCount: 0,
+    },
+  );
+
+  return { summary, products };
+};
 
 /**
  * Build date query
@@ -523,4 +749,5 @@ module.exports = {
   buildDateQuery,
   getOverviewSummary,
   getTransactions,
+  getProductsReport,
 };

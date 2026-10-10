@@ -1,5 +1,19 @@
 const reportsService = require("./reports.service");
 
+const getProductsReport = async (req, res) => {
+  try {
+    const data = await reportsService.getProductsReport(req.query);
+
+    return res.status(200).json({
+      success: true,
+      message: "Products report fetched successfully.",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * GET /api/reports/overview
  */
@@ -29,4 +43,5 @@ const getTransactions = async (req, res) => {
 module.exports = {
   getOverview,
   getTransactions,
+  getProductsReport,
 };

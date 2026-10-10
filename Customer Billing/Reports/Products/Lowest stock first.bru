@@ -1,0 +1,16 @@
+meta {
+  name: Lowest stock first
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/reports/products?sortBy=stock&sortOrder=asc
+  body: none
+  auth: none
+}
+
+query {
+  sortBy: stock
+  sortOrder: asc
+}

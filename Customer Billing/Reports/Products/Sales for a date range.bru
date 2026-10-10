@@ -1,0 +1,16 @@
+meta {
+  name: Sales for a date range
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/reports/products?from=2026-10-01&to=2026-10-10
+  body: none
+  auth: none
+}
+
+query {
+  from: 2026-10-01
+  to: 2026-10-10
+}

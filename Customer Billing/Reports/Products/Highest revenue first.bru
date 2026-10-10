@@ -1,0 +1,15 @@
+meta {
+  name: Highest revenue first
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/reports/products?category=Beverages
+  body: none
+  auth: none
+}
+
+query {
+  category: Beverages
+}
