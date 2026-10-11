@@ -5,17 +5,17 @@ const billingService = require("./billing.service");
  * POST /api/billing
  */
 const createBill = async (req, res, next) => {
-    try {
-        const bill = await billingService.createBill(req.body);
+  try {
+    const bill = await billingService.createBill(req.body);
 
-        res.status(201).json({
-            success: true,
-            message: "Bill created successfully.",
-            data: bill
-        });
-    } catch (error) {
-        next(error);
-    }
+    res.status(201).json({
+      success: true,
+      message: "Bill created successfully.",
+      data: bill,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -23,19 +23,19 @@ const createBill = async (req, res, next) => {
  * GET /api/billing/:id
  */
 const getBillById = async (req, res, next) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const bill = await billingService.getBillById(id);
+    const bill = await billingService.getBillById(id);
 
-        res.status(200).json({
-            success: true,
-            message: "Bill fetched successfully.",
-            data: bill
-        });
-    } catch (error) {
-        next(error);
-    }
+    res.status(200).json({
+      success: true,
+      message: "Bill fetched successfully.",
+      data: bill,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -49,21 +49,39 @@ const getBillById = async (req, res, next) => {
  * limit
  */
 const getBills = async (req, res, next) => {
-    try {
-        const bills = await billingService.getBills(req.query);
+  try {
+    const bills = await billingService.getBills(req.query);
 
-        res.status(200).json({
-            success: true,
-            message: "Bills fetched successfully.",
-            data: bills
-        });
-    } catch (error) {
-        next(error);
-    }
+    res.status(200).json({
+      success: true,
+      message: "Bills fetched successfully.",
+      data: bills,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePaymentType = async (req, res, next) => {
+  try {
+    const bill = await billingService.updatePaymentType(
+      req.params.id,
+      req.body.paymentType,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Payment updated successfully.",
+      data: bill,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {
-    createBill,
-    getBillById,
-    getBills
+  createBill,
+  getBillById,
+  getBills,
+  updatePaymentType,
 };

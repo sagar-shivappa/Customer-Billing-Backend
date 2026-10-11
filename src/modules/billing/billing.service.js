@@ -284,8 +284,28 @@ const getBills = async (filters) => {
   };
 };
 
+const updatePaymentType = async (billId, paymentType) => {
+  if (!["Cash", "UPI"].includes(paymentType)) {
+    throw new Error("Credit bill can only be settled with Cash or UPI");
+  }
+  const bill = await Billing.findById(billId);
+
+  if (!bill) {
+    throw new Error("Bill not found");
+  }
+
+  if (bill.paymentType !== "Credit") {
+    throw new Error("Only credit bills can be marked as paid");
+  }
+
+  bill.paymentType = paymentType;
+
+  return await bill.save();
+};
+
 module.exports = {
   createBill,
   getBillById,
   getBills,
+  updatePaymentType,
 };
