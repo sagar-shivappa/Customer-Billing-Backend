@@ -23,7 +23,7 @@ const generateBillNumber = () => {
  * Create Bill
  */
 const createBill = async (billData) => {
-  const { items, paymentType, customerId } = billData;
+  const { items, paymentType, customerId, customerName } = billData;
 
   if (!items || items.length === 0) {
     throw new Error("Bill should contain at least one product.");
@@ -153,6 +153,7 @@ const createBill = async (billData) => {
       grandTotal,
       paymentType,
       customerId,
+      customerName,
     });
 
     return bill;
