@@ -10,4 +10,6 @@ router.use("/customers", require("../modules/customers/customer.routes"));
 
 router.use("/reports", require("../modules/reports/reports.routes"));
 
+router.use("/qz", require("./qz.routes"));
+
 module.exports = router;
