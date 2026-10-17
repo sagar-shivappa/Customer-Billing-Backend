@@ -619,6 +619,12 @@ const getTransactions = async (filters) => {
 
             items: 1,
 
+            // Persisted GST and bill totals
+            subtotal: 1,
+            gstPercentage: 1,
+            sgstAmount: 1,
+            cgstAmount: 1,
+            roundOff: 1,
             grandTotal: 1,
 
             paymentType: 1,

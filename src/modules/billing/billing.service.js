@@ -3,6 +3,13 @@ const Product = require("../products/product.model");
 const Owner = require("../owner/owner.model");
 
 /**
+ * Round money to 2 decimal places
+ */
+const roundMoney = (value) => {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+};
+
+/**
  * Generate Bill Number
  */
 const generateBillNumber = () => {
@@ -34,7 +41,7 @@ const createBill = async (billData) => {
    */
   const owner = await Owner.findOne({
     profileKey: "OWNER",
-  }).select("stockManagement");
+  }).select("stockManagement includeGst gstPercentage");
 
   if (!owner) {
     throw new Error("Owner profile not found.");
@@ -43,7 +50,7 @@ const createBill = async (billData) => {
   const stockManagement = owner.stockManagement;
 
   const billItems = [];
-  let grandTotal = 0;
+  let subtotal = 0;
 
   /**
    * Keep track of stock that has been reduced.
@@ -68,8 +75,6 @@ const createBill = async (billData) => {
 
       /**
        * Stock Management ENABLED
-       *
-       * Check available stock and reduce it atomically.
        */
       if (stockManagement) {
         product = await Product.findOneAndUpdate(
@@ -112,9 +117,6 @@ const createBill = async (billData) => {
 
       /**
        * Stock Management DISABLED
-       *
-       * Just find the product.
-       * Stock is not checked or modified.
        */
       else {
         product = await Product.findOne({
@@ -126,7 +128,7 @@ const createBill = async (billData) => {
         }
       }
 
-      const totalPrice = product.sellingPrice * quantity;
+      const totalPrice = roundMoney(product.sellingPrice * quantity);
 
       billItems.push({
         productCode: product.productCode,
@@ -136,23 +138,69 @@ const createBill = async (billData) => {
         totalPrice,
       });
 
-      grandTotal += totalPrice;
+      subtotal += totalPrice;
     }
 
-    /**
-     * Generate bill number
-     */
+    // =========================
+    // GST CALCULATION
+    // =========================
+
+    subtotal = roundMoney(subtotal);
+
+    const includeGst = owner.includeGst === true;
+
+    const gstPercentage = includeGst ? Number(owner.gstPercentage || 0) : 0;
+
+    const halfGstPercentage = gstPercentage / 2;
+
+    const sgstAmount = includeGst
+      ? roundMoney((subtotal * halfGstPercentage) / 100)
+      : 0;
+
+    const cgstAmount = includeGst
+      ? roundMoney((subtotal * halfGstPercentage) / 100)
+      : 0;
+
+    // Amount before final round-off
+    const calculatedGrandTotal = roundMoney(subtotal + sgstAmount + cgstAmount);
+
+    // Final bill amount rounded to nearest whole rupee
+    const grandTotal = Math.round(calculatedGrandTotal);
+
+    // Difference caused by rounding
+    const roundOff = roundMoney(grandTotal - calculatedGrandTotal);
+
+    // =========================
+    // GENERATE BILL NUMBER
+    // =========================
+
     const billNumber = generateBillNumber();
 
-    /**
-     * Create bill
-     */
+    // =========================
+    // CREATE BILL
+    // =========================
+
     const bill = await Billing.create({
       billNumber,
+
       items: billItems,
+
+      subtotal,
+
+      gstPercentage,
+
+      sgstAmount,
+
+      cgstAmount,
+
+      roundOff,
+
       grandTotal,
+
       paymentType,
+
       customerId,
+
       customerName,
     });
 
@@ -189,14 +237,6 @@ const getBillById = async (id) => {
 
 /**
  * Get Bills With Filters
- *
- * Supported filters:
- * ?date=2026-09-24
- * ?from=2026-09-01&to=2026-09-24
- * ?month=2026-09
- * ?customerId=6360959764
- *
- * Filters can also be combined.
  */
 const getBills = async (filters) => {
   const { date, from, to, month, customerId, page = 1, limit = 20 } = filters;
@@ -237,7 +277,6 @@ const getBills = async (filters) => {
 
   /**
    * Month Filter
-   * Example: month=2026-09
    */
   else if (month) {
     const [year, monthNumber] = month.split("-");
@@ -289,6 +328,7 @@ const updatePaymentType = async (billId, paymentType) => {
   if (!["Cash", "UPI"].includes(paymentType)) {
     throw new Error("Credit bill can only be settled with Cash or UPI");
   }
+
   const bill = await Billing.findById(billId);
 
   if (!bill) {

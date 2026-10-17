@@ -33,6 +33,17 @@ const ownerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  includeGst: {
+    type: Boolean,
+    default: false,
+  },
+
+  gstPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
+  },
 });
 
 module.exports = mongoose.model("Owner", ownerSchema);
